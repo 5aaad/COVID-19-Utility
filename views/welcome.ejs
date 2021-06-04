@@ -2,41 +2,250 @@
 <html lang="en">
 
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Welcome</title>
-  <link rel="icon" href="/images/icon.png">
-  <script src="https://ajax.googleapis.com/ajax/libs/jquery/2.1.3/jquery.min.js"></script>
+	<meta charset="UTF-8" />
+	<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+	<meta http-equiv="X-UA-Compatible" content="ie=edge" />
+	<script src="https://kit.fontawesome.com/3da1a747b2.js"></script>
+	<!-- Bootstrap Links -->
+	<link rel="stylesheet" href="css/bootstrap.css" />
+	<link rel="stylesheet" href="css/style.css" />
+	<link rel="stylesheet" href="/css/all.css">
+	<link rel="stylesheet" href="/css/styles.css">
+	<!-- Google Fonts -->
+	<link rel="preconnect" href="https://fonts.gstatic.com">
+	<link
+		href="https://fonts.googleapis.com/css2?family=Caveat:wght@500&family=Lato&family=Montserrat:wght@800&family=Ubuntu&display=swap"
+		rel="stylesheet">
+	<script src='https://api.mapbox.com/mapbox-gl-js/v2.1.1/mapbox-gl.js'></script>
+	<link href='https://api.mapbox.com/mapbox-gl-js/v2.1.1/mapbox-gl.css' rel='stylesheet' />
+	<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.6.0/dist/css/bootstrap.min.css"
+		integrity="sha384-B0vP5xmATw1+K9KRQjQERJvTumQW0nPEzvF6L/Z6nronJ3oUOFUFpCjEUQouq2+l" crossorigin="anonymous">
 
-  <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css">
+	<title>COVID-19 Utility | Welcome </title>
+	<script>
+		window.onload = function () {
 
-  <!-- CSS -->
-  <link rel="stylesheet" href="/css/sign.css" 
-  
-  <!-- Google Fonts -->
-  <link rel="preconnect" href="https://fonts.gstatic.com">
-  <link
-    href="https://fonts.googleapis.com/css2?family=Caveat:wght@500&family=Lato&family=Montserrat:wght@800&family=Ubuntu&display=swap"
-    rel="stylesheet">
+			const dataArray = "<%=data%>".replace('"', '').split `,`.map(x => +x)
+			const options = {
+				day: 'numeric',
+				month: 'numeric',
+				year: 'numeric',
+			};
+
+			const date = new Date();
+
+			let plotArray = [];
+
+			for (var i = 0; i < dataArray.length; i++) {
+				var formattedDate = date.getDate() + '/' + (date.getMonth() + 1) + '/' + date.getFullYear();
+				plotArray.push({
+					label: formattedDate,
+					y: dataArray[i]
+				})
+				date.setDate(date.getDate() + 1);
+
+			}
+
+			var chart = new CanvasJS.Chart("chartContainer", {
+				animationEnabled: true,
+				theme: "light2",
+				title: {
+					text: "Covid-19 Forecasted Numbers"
+				},
+				data: [{
+					type: "line",
+					indexLabelFontSize: 16,
+					dataPoints: plotArray
+				}]
+			});
+			chart.render();
+
+		}
+	</script>
 </head>
 
 <body>
-  <section id="login">
-    <div class="container-fluid">
-      <div class="row">
-        <div class="col-lg-6">
-          <h1 class="main-heading">Welcome to COVID-19 Utility!</h1>
-          <hr>
-          <br>
-          <button class="button"><a href="/signup">Sign Up</a></button>
-          <button class="button"><a href="/signin">Sign In</a></button>
-        </div>
-        <div class="col-lg-6">
-          <img class="image" src="/images/mask.png" alt="Mask">
-        </div>
-      </div>
-    </div>
-  </section>
+	<!-- Navbar -->
+	<nav class="navbar navbar-expand-md navbar-dark fixed-top">
+		<div class="container">
+			<a class="navbar-brand" href="/"><i class="fas fa-briefcase-medical"></i> COVID-19 Utility</a>
+			<button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarSupportedContent">
+				<span class="navbar-toggler-icon"></span>
+			</button>
+
+			<div class="collapse navbar-collapse" id="navbarSupportedContent">
+				<ul class="navbar-nav ml-auto">
+					<li class="nav-item">
+						<a class="nav-link" href="/loginChoice"><i class="fas fa-sign-in-alt"></i> Login</a>
+					</li>
+					<li class="nav-item">
+						<a class="nav-link" href="/registerChoice"><i class="fas fa-user-plus"></i> Register</a>
+					</li>
+					<li class="nav-item d-none d-sm-block">
+						<a class="nav-link" href="#">|</a>
+					</li>
+					<li class="nav-item">
+						<a class="nav-link" href="/points">Browse Donation Points</a>
+					</li>
+				</ul>
+			</div>
+		</div>
+	</nav>
+
+	<!-- Showcase -->
+	<section class="showcase">
+		<div class="dark-overlay">
+			<div class="showcase-inner container">
+				<h1 class="display-4">Welcome to COVID-19 Utility!</h1>
+				<hr class="numbers-hr">
+				<p class="lead">Find nearest Donation points and Doctors</p>
+				<form action="/points/radius/" method="GET">
+					<div class="row">
+						<div class="col-md-6">
+							<div class="form-group">
+								<input type="text" class="form-control" name="distance" placeholder="Kilometers From" />
+							</div>
+						</div>
+						<div class="col-md-6">
+							<div class="form-group">
+								<input type="text" class="form-control" name="zipcode" placeholder="Enter Zipcode" />
+							</div>
+						</div>
+					</div>
+					<input type="submit" value="Find" class="btn btn-primary btn-block" />
+				</form>
+			</div>
+		</div>
+	</section>
+	<!-- Features -->
+	<section id="features">
+		<div class="row">
+			<div class="feature-box col-lg-4">
+				<img class="features-icon" src="/images/clock.png" alt="">
+				<h3 class="features-heading">COVID-19 Detection.</h3>
+				<p class="features-p">COVID-19 detection within no time.</p>
+			</div>
+			<div class="feature-box col-lg-4">
+				<img class="features-icon" src="/images/plasma.png" alt="">
+				<h3 class="features-heading">Plasma Donation.</h3>
+				<p class="features-p">We have made it easier for you and your loved ones.</p>
+			</div>
+			<div class="feature-box col-lg-4">
+				<img class="features-icon" src="/images/doctor.png" alt="">
+				<h3 class="features-heading">Consult Doctors.</h3>
+				<p class="features-p">Consult doctors online without leaving the comfort of your house.</p>
+			</div>
+		</div>
+	</section>
+	<hr>
+	<!-- COVID-19 Numbers Interface -->
+
+	<section id="numbers">
+		<h1 style="text-align: center; color: black;" class="display-4 ">Daily Numbers</h1>
+		<h1 style="text-align: center; color: black;" class="display-4 ">Pakistan</h1>
+		<h3></h3>
+		<div class="row">
+			<div class="col-lg-3 numbers-div">
+				<h3 class="numbers">Confirmed Cases:</h3>
+				<h3 class="numbers-stats"><%= pakistanCases %></h3>
+			</div>
+			<div class="col-lg-3 numbers-div">
+				<h3 class="numbers">Deaths:</h3>
+				<h3 class="numbers-stats"><%= pakistanDeaths %> </h3>
+			</div>
+			<div class="col-lg-3 numbers-div">
+				<h3 class="numbers">Recovered:</h3>
+				<h3 class="numbers-stats"><%=pakistanRecovered%></h3>
+			</div>
+			<div class="col-lg-3 numbers-div">
+				<h3 class="numbers">Active:</h3>
+				<h3 class="numbers-stats"><%= pakistanActive %></h3>
+			</div>
+			<div class="col-lg-3 numbers-div">
+				<h3 class="numbers">Today Cases:</h3>
+				<h3 class="numbers-stats"><%=pakistanTodayCases%></h3>
+			</div>
+			<div class="col-lg-3 numbers-div">
+				<h3 class="numbers">Today Deaths:</h3>
+				<h3 class="numbers-stats"><%= pakistanTodayDeaths %></h3>
+			</div>
+			<div class="col-lg-3 numbers-div">
+				<h3 class="numbers">Today Recovered:</h3>
+				<h3 class="numbers-stats"><%=pakistanTodayRecovered%></h3>
+			</div>
+			<div class="col-lg-3 numbers-div">
+				<h3 class="numbers">Critical:</h3>
+				<h3 class="numbers-stats"><%= pakistanCritical %></h3>
+			</div>
+		</div>
+	</section>
+
+	<section id="numbers">
+		<h1 style="text-align: center; color: black;" class="display-4">WorldWide</h1>
+		<div class="row">
+			<div class="col-lg-3 numbers-div">
+				<h3 class="numbers">Confirmed Cases:</h3>
+				<h3 class="numbers-stats"><%= worldWideCases %></h3>
+			</div>
+			<div class="col-lg-3 numbers-div">
+				<h3 class="numbers">Deaths:</h3>
+				<h3 class="numbers-stats"><%= worldWideDeaths %> </h3>
+			</div>
+			<div class="col-lg-3 numbers-div">
+				<h3 class="numbers">Recovered:</h3>
+				<h3 class="numbers-stats"><%=worldWideRecovered%></h3>
+			</div>
+			<div class="col-lg-3 numbers-div">
+				<h3 class="numbers">Active:</h3>
+				<h3 class="numbers-stats"><%= worldWideActive %></h3>
+			</div>
+			<div class="col-lg-3 numbers-div">
+				<h3 class="numbers">Today Cases:</h3>
+				<h3 class="numbers-stats"><%=worldWideTodayCases%></h3>
+			</div>
+			<div class="col-lg-3 numbers-div">
+				<h3 class="numbers">Today Deaths:</h3>
+				<h3 class="numbers-stats"><%= worldWideTodayDeaths %></h3>
+			</div>
+			<div class="col-lg-3 numbers-div">
+				<h3 class="numbers">Today Recovered:</h3>
+				<h3 class="numbers-stats"><%=worldWideTodayRecovered%></h3>
+			</div>
+			<div class="col-lg-3 numbers-div">
+				<h3 class="numbers">Critical:</h3>
+				<h3 class="numbers-stats"><%= worldWideCritical %></h3>
+			</div>
+		</div>
+
+	</section>
+	<hr>
+	<div id="chartContainer" style="height: 370px; width: 100%;"></div>
+	<script src="https://canvasjs.com/assets/script/canvasjs.min.js"></script>
+	<hr>
+	<h1 style="text-align: center; color: black;" class="display-4 ">World Map</h1>
+	<div id='map' style='width: 500-px; height: 600px;'></div>
+
+
+</html>
+
+<script src="https://code.jquery.com/jquery-3.3.1.slim.min.js"
+	integrity="sha384-q8i/X+965DzO0rT7abK41JStQIAqVgRVzpbzo5smXKp4YfRvH+8abtTE1Pi6jizo" crossorigin="anonymous">
+</script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.7/umd/popper.min.js"
+	integrity="sha384-UO2eT0CpHqdSJQ6hJty5KVphtPhzWj9WO1clHTMGa3JDZwrnQq4sF86dIHNDz0W1" crossorigin="anonymous">
+</script>
+<script src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js"
+	integrity="sha384-JjSmVgyd0p3pXB1rRibZUAYoIIy6OrQ6VrjIEaFf/nJGzIxFDsf4x0xIM+B07jRM" crossorigin="anonymous">
+</script>
+<script>
+	mapboxgl.accessToken = 'pk.eyJ1IjoiNWFhYWQiLCJhIjoiY2tsejdydXlyMWI2NDJ2bzZ4a2pudXlycyJ9.P0k6oCwzpvzhzyDCroehSg';
+	var map = new mapboxgl.Map({
+		container: 'map',
+		style: 'mapbox://styles/mapbox/streets-v11',
+		zoom: 1
+	});
+</script>
+<script type="module" src="./js/coronamap.js"></script>
 </body>
 
 </html>

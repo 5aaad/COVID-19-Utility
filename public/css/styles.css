@@ -1,39 +1,5 @@
-.navbar {
-  padding-top: 15px;
-  padding-bottom: 15px;
-  font-size: 12px;
-  margin: 0;
-  background: #f05454;
-  font-family: 'Ubuntu', sans-serif;
-}
-
 .container-fluid {
   padding: 0% 5%;   !important
-}
-
-.navbar-brand {
-  font-family: 'Ubuntu', sans-serif;
-  font-weight: bold;
-  font-size: 3rem;
-  color: white;
-}
-
-.navbarButtons {
-
-  width: 115px;
-  background: white;
-  text-align: center;
-  border-radius: 5px;
-}
-
-.nav-item {
-  padding: 0px;
-  color: white; !important 
-  position: relative;
-  margin-left: 30px;
-  font-weight: bolder;
-  font-family: 'Ubuntu', sans-serif;
-  letter-spacing: 5px;
 }
 
 #logo {
@@ -71,10 +37,9 @@
 }
 
 #title {
-  background-color: #F05454;
+  background-color: #007bff;
   position: relative;
-  margin-bottom: 20px;
-   !important
+  margin-bottom: 20px; !important
 }
 
 .title-image {
@@ -114,7 +79,7 @@
   text-align: center;
   font-family: 'Montserrat', sans-serif;
   color: white;
-  background-color: #F05454;
+  background-color: #007bff;
   padding: 50px 100px;
   text-shadow: 4px 4px #000000;
   font-size: 50px;
@@ -124,7 +89,7 @@
 .numbers-heading {
   text-align: center;
   font-family: 'Montserrat', sans-serif;
-  color: black;
+  
   position: relative;
   margin-top: 80px;
   text-shadow: 1px 1px #000000;
@@ -137,16 +102,11 @@
 }
 
 .numbers-hr {
-  background-color: white;
-  border-style: none;
-  border-top-style: dotted;
-  border-color: #F05454;
-  border-width: 5px;
-  width: 50%;
+  border: 1px solid white;
 }
 
 .numbers-div {
-  background-color: #f05454;
+  background-color: #007bff;
   border-radius: 10px;
   border: 3px solid black;
   
@@ -174,7 +134,7 @@
 }
 
 #footer {
-  background-color: #F05454;
+  background-color: #007bff;
   padding: 1% 1%;
   text-align: center;
   font-family: 'Ubuntu', sans-serif;

@@ -1,0 +1,57 @@
+img {
+    width: 100%
+}
+
+.showcase {
+    position: relative;
+    background: url("../images/showcase.jpg") no-repeat center center/cover;
+    min-height: 100vh;
+    color: #fff
+}
+
+.showcase-inner {
+    text-align: center;
+    padding-top: 20%;
+    height: 100%;
+    width: 80%;
+    margin: auto
+}
+
+.dark-overlay {
+    background-color: rgba(0, 0, 0, 0.8);
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%
+}
+
+.brand-logo {
+    height: 90%;
+  }
+  
+  
+  input::-webkit-outer-spin-button,
+  input::-webkit-inner-spin-button {
+    /* display: none; <- Crashes Chrome on hover */
+    -webkit-appearance: none;
+    margin: 0;
+    /* <-- Apparently some margin are still there even though it's hidden */
+  }
+  
+  input[type='number'] {
+    -moz-appearance: textfield;
+  }
+  
+  input {
+    outline: 0;
+    border-width: 0 0 2px;
+  }
+  
+ 
+  
+  input#amount {
+    color: red;
+    font-size: 6rem;
+    text-align: center;
+  }

@@ -1,4 +1,4 @@
-//jshint esversion: 6
+// jshint esversion: 6
 
 const path = require("path")
 const express = require("express");
@@ -7,159 +7,139 @@ const ejs = require("ejs");
 const request = require("request");
 const http = require("http");
 const mongoose = require("mongoose");
-const socketio = require("socket.io");
-const bcrypt = require("bcryptjs");
-const jwt = require("jsonwebtoken");
 const dotenv = require("dotenv");
+const fileUpload = require('express-fileupload');
 const cors = require("cors");
+const errorHandler = require("./middleware/error");
+const colors = require("colors");
+const cookieParser = require('cookie-parser');
 const connectDB = require("./controllers/db");
-const formatMessage = require('./utils/messages');
-const {
-  userJoin,
-  getCurrentUser,
-  userLeave,
-  getRoomUsers
-} = require('./utils/users');
-const exec =  require('child_process').exec;
-const fs = require('fs'); 
+const debug = require('debug')('http');
+const asyncHandler = require('./middleware/async');
+const exec = require('child_process').exec;
+const fs = require('fs');
 const util = require('util');
 let exec_prom = util.promisify(exec);
 
+const formatMessage = require('./utils/messages');
+const {
+	userJoin,
+	getCurrentUser,
+	userLeave,
+	getRoomUsers
+} = require('./utils/users');
+
 const app = express();
-const server = http.createServer(app);
-const io = socketio(server);
 const botName = "COVID-19 Utility Bot";
-const JWT_SECRET = "ksjdfnkdsfjdshgjdskgbdskjgbdskjgb"
+const logger = require("./middleware/logger");
+const Chat = require('./models/Chat');
+const Doctor = require('./models/Doctor');
+const Conversation = require('./models/Conversation');
+const Message = require('./models/Message');
+
+app.use(logger);
+app.use(errorHandler);
+
+// Route Files
+const points = require('./routes/points');
+const plasmas = require('./routes/plasmas');
+const auth = require('./routes/auth');
+const admin = require('./routes/admin');
+const reviews = require('./routes/reviews');
+const doctor = require('./routes/doctor');
+const prediction = require('./routes/prediction');
+const conversation = require('./routes/conversation');
+const message = require('./routes/message');
+
+var server = require('http').createServer(app);
+var io = require('socket.io')(server);
 
 // load env vars
 dotenv.config({
-  path: "./config/config.env"
+	path: "./config/config.env"
 });
 
 // Connection to DB
 connectDB();
 
-// Body parser
+// File upload
+app.use(fileUpload());
 
+// Body parser
 app.set('view engine', 'ejs');
 app.use(bodyParser.urlencoded({
-  limit: '50mb',
-  extended: true
+	limit: '50mb',
+	extended: true
 }));
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
-// Enable cors
+// Cookie parser
+app.use(cookieParser());
 
+// Enable cors
 app.use(cors());
 
 // Chat Module
 
-// Run when client connects
-io.on('connection', socket => {
-  socket.on('joinRoom', ({
-    username,
-    room
-  }) => {
-    const user = userJoin(socket.id, username, room);
 
-    socket.join(user.room);
 
-    // Welcome current user
-    socket.emit('message', formatMessage(botName, 'Welcome to COVID-19 Utility Chat!'));
 
-    // Broadcast when a user connects
-    socket.broadcast
-      .to(user.room)
-      .emit(
-        'message',
-        formatMessage(botName, `${user.username} has joined the chat`)
-      );
+let users = [];
 
-    // Send users and room info
-    io.to(user.room).emit('roomUsers', {
-      room: user.room,
-      users: getRoomUsers(user.room)
-    });
-  });
+const addUser = (userId, socketId) => {
+	!users.some((user) => user.userId === userId) &&
+		users.push({
+			userId,
+			socketId
+		});
+};
 
-  // Listen for chatMessage
-  socket.on('chatMessage', msg => {
-    const user = getCurrentUser(socket.id);
+const removeUser = (socketId) => {
+	users = users.filter((user) => user.socketId !== socketId);
+};
 
-    io.to(user.room).emit('message', formatMessage(user.username, msg));
-  });
+const getUser = (userId) => {
+	return users.find((user) => user.userId === userId);
+};
 
-  // Runs when client disconnects
-  socket.on('disconnect', () => {
-    const user = userLeave(socket.id);
+io.on("connection", (socket) => {
+	//when connect
+	console.log("a user connected.");
 
-    if (user) {
-      io.to(user.room).emit(
-        'message',
-        formatMessage(botName, `${user.username} has left the chat`)
-      );
+	//take userId and socketId from user
+	socket.on("addUser", (userId) => {
+		console.log("i a from server")
+		addUser(userId, socket.id);
+		io.emit("getUsers", users);
+	});
 
-      // Send users and room info
-      io.to(user.room).emit('roomUsers', {
-        room: user.room,
-        users: getRoomUsers(user.room)
-      });
-    }
-  });
+	//send and get message
+	socket.on("sendMessage", ({
+		senderId,
+		receiverId,
+		text
+	}) => {
+
+		const user = getUser(receiverId);
+		if (user != undefined) {
+			console.log("hhehe")
+			io.to(user.socketId).emit("getMessage", {
+				senderId,
+				text,
+			});
+		}
+	});
+
+	// when disconnect
+	socket.on("disconnect", () => {
+		console.log("a user disconnected!");
+		removeUser(socket.id);
+		io.emit("getUsers", users);
+	});
 });
-
-
-
-// Users Schema
-
-const userSchema = new mongoose.Schema({
-
-  email: {
-    type: String,
-    required: true,
-    unique: true
-  },
-  password: {
-    type: String,
-    required: true
-  }
-}, {
-  collection: "users"
-})
-
-const User = mongoose.model("User", userSchema);
-
-// Patient Schema
-
-const patientSchema = new mongoose.Schema({
-  patientID: Number,
-  name: String,
-  age: Number,
-  gender: String,
-  previouslyDiagnosed: Boolean,
-  bloodGroup: String,
-  password: String
-});
-
-const Patient = mongoose.model("Patient", patientSchema);
-
-// Doctor Schema
-
-const doctorSchema = new mongoose.Schema({
-  doctorID: Number,
-  name: String,
-  age: Number,
-  qualification: String,
-  experience: String,
-  location: String,
-  feedback: Number
-});
-
-const Doctor = mongoose.model("Doctor", doctorSchema);
 
 // COVID-19 API
-
 var worldWideCases;
 var worldWideTodayCases;
 var worldWideDeaths;
@@ -170,15 +150,15 @@ var worldWideActive;
 var worldWideCritical;
 
 request("https://disease.sh/v3/covid-19/all", function (error, response, body) {
-  data = JSON.parse(body);
-  worldWideCases = data.cases;
-  worldWideTodayCases = data.todayCases;
-  worldWideDeaths = data.deaths;
-  worldWideTodayDeaths = data.todayDeaths;
-  worldWideRecovered = data.recovered;
-  worldWideTodayRecovered = data.todayRecovered;
-  worldWideActive = data.active;
-  worldWideCritical = data.critical;
+	data = JSON.parse(body);
+	worldWideCases = data.cases;
+	worldWideTodayCases = data.todayCases;
+	worldWideDeaths = data.deaths;
+	worldWideTodayDeaths = data.todayDeaths;
+	worldWideRecovered = data.recovered;
+	worldWideTodayRecovered = data.todayRecovered;
+	worldWideActive = data.active;
+	worldWideCritical = data.critical;
 })
 
 var pakistanCases;
@@ -191,104 +171,208 @@ var pakistanActive;
 var pakistanCritical;
 
 request("https://disease.sh/v3/covid-19/countries/Pakistan?strict=true", function (error, response, body) {
-  data = JSON.parse(body);
-  pakistanCases = data.cases;
-  pakistanTodayCases = data.todayCases;
-  pakistanDeaths = data.deaths;
-  pakistanTodayDeaths = data.todayDeaths;
-  pakistanRecovered = data.recovered;
-  pakistanTodayRecovered = data.todayRecovered;
-  pakistanActive = data.active;
-  pakistanCritical = data.critical;
+	data = JSON.parse(body);
+	pakistanCases = data.cases;
+	pakistanTodayCases = data.todayCases;
+	pakistanDeaths = data.deaths;
+	pakistanTodayDeaths = data.todayDeaths;
+	pakistanRecovered = data.recovered;
+	pakistanTodayRecovered = data.todayRecovered;
+	pakistanActive = data.active;
+	pakistanCritical = data.critical;
 })
 
 
 //GET Routes
 
-app.get("/", function(req, res){
-  res.render("welcome");
+app.get("/", function (req, res) {
+	var timeSeriesResult;
+	const pythonFilePath = '"C:/Users/Saad Ur Rehman/Desktop/COVID19/covid-model-files/time_series.py"';
+
+	var commands = [
+		'conda activate covid-site',
+		'python ' + pythonFilePath
+	];
+
+	async function pythonScript() {
+		await exec_prom(commands.join(' & '))
+	}
+	pythonScript().then(() => (
+
+		fs.readFile('C:/Users/Saad Ur Rehman/Desktop/COVID19/covid-model-files/time.txt', 'utf8', async (err, data) => {
+			if (err) {
+				console.error(err)
+				return
+			}
+			timeSeriesResult = await JSON.parse(data);
+			const dataArray = [];
+			for (const [key, value] of Object.entries(timeSeriesResult.yhat_lower)) {
+				dataArray.push(Math.round(value));
+			}
+			res.render("welcome", {
+				pakistanCases: pakistanCases,
+				pakistanTodayCases: pakistanTodayCases,
+				pakistanDeaths: pakistanDeaths,
+				pakistanTodayDeaths: pakistanTodayDeaths,
+				pakistanRecovered: pakistanRecovered,
+				pakistanTodayRecovered: pakistanTodayRecovered,
+				pakistanActive: pakistanActive,
+				pakistanCritical: pakistanCritical,
+				worldWideCases: worldWideCases,
+				worldWideTodayCases: worldWideTodayCases,
+				worldWideDeaths: worldWideDeaths,
+				worldWideTodayDeaths: worldWideTodayDeaths,
+				worldWideRecovered: worldWideRecovered,
+				worldWideTodayRecovered: worldWideTodayRecovered,
+				worldWideActive: worldWideActive,
+				worldWideCritical: worldWideCritical,
+				data: dataArray
+			});
+		})
+	)).catch(error => console.log(error));
+
 });
 
-app.get("/stores", function (req, res) {
-  res.render("stores");
+app.get('/register', function (req, res) {
+	res.render('register');
 });
 
-app.get("/addStore", function(req, res){
-  res.render("addStore");
+app.get('/chat-dashboard', function (req, res) {
+	res.render('chatDashboard');
 });
 
-app.get("/signup", function (req, res) {
-  res.render("signup");
+app.get('/chat-doctor', function (req, res) {
+	res.render('doctorChat');
+});
+
+app.get('/registerDoctor', function (req, res) {
+	res.render('registerDoctor');
+});
+
+app.get('/login', function (req, res) {
+	res.render('login');
+});
+
+app.get('/resetPassword', function (req, res) {
+	res.render('resetPassword');
 })
 
-app.get("/signin", function (req, res) {
-  res.render("signin");
+app.get('/manageAccount', function (req, res) {
+	res.render('manageAccount');
+})
+
+app.get('/api/v1/points/radius/', function (req, res) {
+	res.render('index');
 });
+
+app.get('/createPoint', function (req, res) {
+	res.render('createPoint');
+});
+
+app.get('/addReview', function (req, res) {
+	res.render('addReview');
+})
+
+app.get('/updatePassword', function (req, res) {
+	res.render('updatePassword');
+});
+
+app.get('/manageReviews', function (req, res) {
+	res.render('manageReviews')
+})
 
 app.get("/home", function (req, res) {
-  res.render("home", {
-    pakistanCases: pakistanCases,
-    pakistanTodayCases: pakistanTodayCases,
-    pakistanDeaths: pakistanDeaths,
-    pakistanTodayDeaths: pakistanTodayDeaths,
-    pakistanRecovered: pakistanRecovered,
-    pakistanTodayRecovered: pakistanTodayRecovered,
-    pakistanActive: pakistanActive,
-    pakistanCritical: pakistanCritical,
-    worldWideCases: worldWideCases,
-    worldWideTodayCases: worldWideTodayCases,
-    worldWideDeaths: worldWideDeaths,
-    worldWideTodayDeaths: worldWideTodayDeaths,
-    worldWideRecovered: worldWideRecovered,
-    worldWideTodayRecovered: worldWideTodayRecovered,
-    worldWideActive: worldWideActive,
-    worldWideCritical: worldWideCritical
-  });
+	res.render('home');
 });
 
-app.get("/chat", function (req, res) {
-  res.render("chat");
-});
-
-app.get("/index", function(req, res){
-  res.render("index");
+app.get('/doctorHome', function (req, res) {
+	res.render('doctorHome');
 })
 
-app.get("/profile", function (req, res) {
-  res.render("home");
+app.get("/index", function (req, res) {
+	res.render('index');
+});
+
+app.get('/loginChoice', function (req, res) {
+	res.render('loginChoice');
+})
+
+app.get('/registerChoice', function (req, res) {
+	res.render('registerChoice');
+});
+
+
+app.get('/doctorLogin', function (req, res) {
+	res.render('doctorLogin');
 });
 
 covidPrediction = {};
 
-app.get("/predictionCovid", function(req, res){
-  res.render('covidPrediction', {prediction: 'hi', probability: 'bye'});
+app.get("/predictionCovid", function (req, res) {
+	res.render('covidPrediction', {
+		prediction: 'hi',
+		probability: 'bye'
+	});
 })
 
 app.get('/prediction', (req, res) => {
-  res.render('covidImageUpload');
+	res.render('covidImageUpload');
+});
+
+app.get('/donate', function (req, res) {
+	res.render('donate');
+});
+
+app.get('/chat', async function (req, res, next) {
+	const doctors = await Doctor.find();
+
+	res.status(200).render('chat', {
+		success: true,
+		count: doctors.length,
+		data: doctors
+	});
+});
+
+
+// POST routes
+
+app.post('/chat', async function (req, res) {
+	// const sentMessage = req.body.sentMessage;
+	// const participant1 = req.body.patientId;
+	// const participant2 = req.body.doctorId;
+
+	const chat = await Chat.create({
+		message: req.body.sentMessage,
+		patientId: req.body.patientId,
+		doctorId: req.body.doctorId
+	});
+	res.status(200).json({
+		success: true,
+		data: chat
+	})
 });
 
 app.post('/prediction', (req, res) => {
-  // res.render('covidPrediction');
+	// res.render('covidPrediction');
 
-  image = {
+	image = {
 		data: req.body.image
 	};
 
 	var json = JSON.stringify(image);
-	fs.writeFile('./covid-model-files/image_json_file.json', json, 'utf8', function(err){
-		if(err){
+	fs.writeFile('./covid-model-files/image_json_file.json', json, 'utf8', function (err) {
+		if (err) {
 			console.log(err);
 		}
 	});
 
-  const pythonFilePath = 'E:/Test/covid-model-files/model.py';
-  const imageFilePath = 'E:/Test/covid-model-files/image_json_file.json';
+	const pythonFilePath = 'C:/Users/Saad Ur Rehman/Desktop/COVID19/covid-model-files/model.py';
+	const imageFilePath = 'C:/Users/Saad Ur Rehman/Desktop/COVID19/covid-model-files/image_json_file.json';
 
 	var commands = [
-        'conda activate covid-site',
-        'python '+pythonFilePath+' --infile '+imageFilePath
-    ];
+		'conda activate covid-site',
+		'python ' + pythonFilePath + ' --infile ' + imageFilePath
+	];
 
 	// var pythonProcess = exec(commands.join(' & '),
 	//     	 function(error, stdout, stderr){
@@ -299,171 +383,59 @@ app.post('/prediction', (req, res) => {
 	// );
 	var predictionOutput = {};
 
-  async function pythonScript() {
-    var pythonProcess = await exec_prom(commands.join(' & '),
-	    	 function(error, stdout, stderr){
-	       		// console.log(error);
-	        	// console.log(stdout);
-            // this.stdin.end();
-            // this.stdout.destroy();
-            // this.stderr.destroy()
-            
-	        	// console.log(stderr);
-            predictionOutput = JSON.parse(stdout);
-            console.log(predictionOutput);
-            // res.redirect('/predictionCovid')
-            // global.alert("Your result is "+predictionOutput.prediction);
-            // res.render('covidPrediction', {prediction: 'hi', probability: 'bye'});
-            res.redirect("predictionCovid");
-	    }
-	);
-  
-  // pythonProcess.kill('SIGINT');
-  //  pythonProcess.on('exit', function (code) {
-	//     console.log("python process exited with code "+code);
-	// });
-  }
-  pythonScript();
+	async function pythonScript() {
+		var pythonProcess = await exec_prom(commands.join(' & '),
+			function (error, stdout, stderr) {
+				// console.log(error);
+				// console.log(stdout);
+				// this.stdin.end();
+				// this.stdout.destroy();
+				// this.stderr.destroy()
 
+				// console.log(stderr);
+				predictionOutput = JSON.parse(stdout);
+				console.log(predictionOutput);
+				// res.redirect('/predictionCovid')
+				// global.alert("Your result is "+predictionOutput.prediction);
+				// res.render('covidPrediction', {prediction: 'hi', probability: 'bye'});
+				res.redirect("predictionCovid");
+			}
+		);
 
+		// pythonProcess.kill('SIGINT');
+		//  pythonProcess.on('exit', function (code) {
+		//     console.log("python process exited with code "+code);
+		// });
+	}
+	pythonScript();
 
 	// pythonProcess.stdout.on('data', function(data) {
 
 	// 	predictionOutput = JSON.parse(data);
 
-  //   res.render('covidPrediction', {prediction: predictionOutput.prediction, probability: predictionOutput.probability})
+	//   res.render('covidPrediction', {prediction: predictionOutput.prediction, probability: predictionOutput.probability})
 
 	// });
-  
-  // pythonProcess.on('exit', function (code) {
+
+	// pythonProcess.on('exit', function (code) {
 	//     console.log("python process exited with code "+code);
 	// });
 
-  // res.render('covidPrediction', {prediction: 'hi', probability: 'bye'});
-  // res.redirect('predictionCovid');
+	// res.render('covidPrediction', {prediction: 'hi', probability: 'bye'});
+	// res.redirect('predictionCovid');
 });
 
-app.use('/api/v1/stores', require('./routes/stores'));
-
-// POST Routes
-
-app.post("/api/register", async (req, res) => {
-
-  const {
-    email,
-    password: plainTextPassword
-  } = req.body;
-
-  if (!email || typeof email !== "string") {
-    return res.json({
-      status: "error",
-      error: "Invalid email"
-    })
-  }
-
-  if (!plainTextPassword || typeof plainTextPassword !== "string") {
-    return res.json({
-      status: "error",
-      error: "Invalid password"
-    })
-  }
-
-  if (plainTextPassword.length < 5) {
-    return res.json({
-      status: "error",
-      error: "Password too small. It should be atleast 6 characters."
-    })
-  }
-
-  const password = await bcrypt.hash(plainTextPassword, 10);
-
-  try {
-    const response = await User.create({
-      email,
-      password
-    })
-    console.log("User created successfully: ", response);
-  } catch (error) {
-    if (error.code === 11000) {
-      return res.json({
-        status: 'error',
-        error: "Email already in use."
-      })
-    }
-    throw error;
-  }
-
-  res.json({
-    status: 'ok'
-  });
-});
-
-// app.post("/signup", function(req, res){
-//     const userEmail = req.body.email;
-//     const userPassword = req.body.password;
-
-
-//     User.findOne({email: userEmail}, function(err, foundList){
-//       if(!err){
-//         if(!foundList){
-//           console.log("User is not registered");
-//           const newUser = newUser({
-//             email: userEmail,
-//             password: userPassword
-//           });
-
-//           newUser.save();
-//           res.render("signin");
-//         } else {
-//           alreadyRegisteredError = true;
-//           console.log("User is registered");
-//           res.render("signup");
-//         }
-//       }
-//     })
-// });
-//
-app.post("/api/login", async (req, res) => {
-
-  const {
-    email,
-    password
-  } = req.body;
-
-  const user = await User.findOne({
-    email,
-  }).lean()
-
-  if (!user) {
-    return res.json({
-      status: "error",
-      error: "Invalid username/password!"
-    });
-  }
-
-  if (await bcrypt.compare(password, user.password)) {
-
-    // The username/password is matched
-
-    const token = jwt.sign({
-      id: user._id,
-      email: user.email
-    }, JWT_SECRET);
-
-    return res.json({
-      status: "ok",
-      data: token
-    });
-  }
-
-  res.json({
-    status: "error",
-    data: "Invalid username/password!"
-  })
-})
-
-
+// Mount routers
+app.use('/points', points);
+app.use('/plasmas', plasmas);
+app.use('/auth', auth);
+app.use('/doctor', doctor);
+app.use('/api/v1/admin', admin);
+app.use('/reviews', reviews);
+app.use('/prediction', prediction)
+app.use('/conversation', conversation)
+app.use('/message', message)
 
 const PORT = process.env.PORT || 3000;
 
-server.listen(PORT, () => console.log(`Server running in ${process.env.NODE_ENV} mode on port ${PORT}`));
+server.listen(PORT, () => console.log(`Server running in ${process.env.NODE_ENV} mode on port ${PORT}`.yellow.bold));
